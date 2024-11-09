@@ -64,9 +64,109 @@ In Order to run JHaaS in production, you should have at least following componen
 
 ### Get the configuration
 
-### Set up your environment
+The Terraform / OpenTofu configuration can be downloaded from our [public mirror of the deployment repository](https://github.com/JLU-BCF/JHaaS-Deployment). It contains submodules, so make sure to include them:
 
-### Deploy JHaaS
+```
+git clone --recurse-submodules https://github.com/JLU-BCF/JHaaS-Deployment.git
+```
+
+### Set up your environment (1/2)
+
+Then setup your `terraform.tfvars` file.
+You find all mandatory options in the mandatory tf file.
+
+In order to use authentik and the portal in a proper way, you should also set the email preferences. And you might want to customize the bootstrap email for authentik.
+
+It might be a good idea to fix the version to be used. Have a look in the variables.versions.tf in order to get a list of versions you can set. Otherwise the latest versions will be applied.
+
+> ⚠️ **Important:**
+> If you do not know the IP address of you ingress in advanced, follow these steps
+
+You might not want to deploy all the components at once. Especially if you don't know the IP of your ingress yet. Therefore, you might switch components on and off like this:
+
+```
+# Deployment configuration
+deploy_nginx_ingress_controller = true
+deploy_cert_manager             = true
+deploy_postgres                 = true
+deploy_redis                    = true
+deploy_minio                    = true
+deploy_authentik                = false
+configure_authentik             = false
+deploy_jhaas                    = false
+```
+
+In order to deploy and configure authentik and to deploy jhaas you will need to have your FQDNs setup properly. Otherwise the cert manager cannot obtain a valid ssl certificate for authentik and jhaas and thus terraform cannot configure it properly.
+
+### Deploy JHaaS (1/2)
+
+Initialize the OpenTufo / Terraform configuration:
+
+```
+tofu init
+```
+
+then
+
+```
+tofu apply
+```
+
+Depending on your Version you might run to an issue that helm repos aren't cached locally. Just run a helm repo update manually and try again.
+
+```
+helm repo update
+```
+
+### Set up your environment (2/2)
+
+When deployment succeeded, get the IP address of your Load Balancer.
+
+You can see it as external endpoint in the loadbalancer service created for the new nginx ingress.
+
+Set up your FQDNs to match this IP Address.
+
+Make sure the DNS has synced the records before continueing.
+
+You might now set `deploy_authentik`, `configure_authentik` and `deploy_jhaas` to true.
+
+```
+# Deployment configuration
+deploy_nginx_ingress_controller = true
+deploy_cert_manager             = true
+deploy_postgres                 = true
+deploy_redis                    = true
+deploy_minio                    = true
+deploy_authentik                = true
+configure_authentik             = true
+deploy_jhaas                    = true
+```
+
+### Deploy JHaaS (2/2)
+
+Once again run
+
+```
+tofu apply
+```
+
+### Deploy JHaaS Portal into another K8s cluster than the jupyterhubs themselves
+
+## JHaaS First steps
+
+After deploying JHaaS you might to login first time. Therefore, ask OpenTofu/Terraform for the generated password for authentik by running:
+
+```
+tofu output authentik_password
+```
+
+Use this password in conjunction with the JHaaS Authentik Bootstrap E-Mail (default: `akadmin@jhaas.intern`) that you might have set in your terraform values. You will be prompted to setup multi factor authentication and to store the multi factor recovery codes. This will be the first Authentik admin account.
+
+Go to `authentik settings -> admin interface -> directory -> users` and open the `akadmin` user. You might want to add the groups `portal_leaders`, `portal_admins` and `admins` to this user. You might also want to set a proper Family and Given Name for that user.
+
+Head back to the JHaaS Portal, navigate to your account settings and click on "sync roles".
+
+The JHaaS system is now ready to be used.
 
 ## In-Depth: Components of JHaaS
 
