@@ -221,21 +221,19 @@ tofu apply
 > Depending on your local setup you might run to an issue that helm repos aren't cached locally. Just run `helm repo update` manually and try again.
 
 
-## JHaaS First steps
+## JHaaS / Authentik: First steps
 
-After deploying JHaaS you might to login first time. Therefore, ask OpenTofu/Terraform for the generated password for authentik by running:
+After deployment, it is time to log in for the first time. To get the password for the bootstrap user, run:
 
 ```
 tofu output authentik_password
 ```
 
-Use this password in conjunction with the JHaaS Authentik Bootstrap E-Mail (default: `akadmin@jhaas.intern`) that you might have set in your terraform values. You will be prompted to setup multi factor authentication and to store the multi factor recovery codes. This will be the first Authentik admin account.
+Use this password in combination with the bootstrap email address that you entered in the configuration (default: `akadmin@jhaas.intern` if bootstrap email left blank). You will be guided through the creation of the two-factor authentication and recovery codes will be created for the account. The bootstrap account is the (first) admin account for Authentik.
 
-Go to `authentik settings -> admin interface -> directory -> users` and open the `akadmin` user. You might want to add the groups `portal_leaders`, `portal_admins` and `admins` to this user. You might also want to set a proper Family and Given Name for that user.
+In order to obtain suitable permissions in the JHaaS portal, your account must be a member of groups `portal_leaders`, `portal_admins` and `admins`. Go to `authentik settings -> admin interface -> directory -> users` and open the `akadmin` user. Add the named groups to your account. You might also want to set a proper Family and Given Name for your account.
 
-Head back to the JHaaS Portal, navigate to your account settings and click on "sync roles".
-
-The JHaaS system is now ready to be used.
+Head back to the JHaaS Portal, navigate to your account settings and click on `sync roles`. The JHaaS system is now fully operational.
 
 ## In-Depth: Components of JHaaS
 
@@ -243,16 +241,19 @@ The JHaaS system is now ready to be used.
 
 👉 [Repository](https://github.com/JLU-BCF/JHaaS-Portal-Backend)
 
+Provides API for the JHaaS Portal.
 
 ### Portal Frontend
 
 👉 [Repository](https://github.com/JLU-BCF/JHaaS-Portal-Frontend)
 
+Provides UI for the JHaaS Portal.
 
 ### TF Worker
 
 👉 [Repository](https://github.com/JLU-BCF/JHaaS-TF-Worker)
 
+Deploys a JupyterHub via OpenTofu in JHaaS context.
 
 ## In-Depth: Configuration of JHaaS
 
@@ -260,18 +261,22 @@ The JHaaS system is now ready to be used.
 
 👉 [Repository](https://github.com/JLU-BCF/JHaaS-TF-Config)
 
+Terraform configuration for JupyterHub deployments in context of JHaaS.
 
 ### Authentik Config
 
 👉 [Repository](https://github.com/JLU-BCF/JHaaS-Authentik-Config)
 
+Terraform configuration to seed Authentik in context of JHaaS.
 
 ### Portal Helm Chart
 
 👉 [Repository](https://github.com/JLU-BCF/JHaaS-Portal-Helm-Chart)
 
+Helm Chart to deploy the JHaaS Portal.
 
 ### Deployment Config
 
 👉 [Repository](https://github.com/JLU-BCF/JHaaS-Deployment)
 
+Terraform configuration that generates and combines all neccessary variables, modules and charts in order to deploy JHaaS.
