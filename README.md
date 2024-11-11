@@ -23,7 +23,7 @@ The illustration shows the general life cycle of a JupyterHub for teaching via t
 
 ### See it in action
 
-<video alt="JHaaS Demo Video" src="https://jlubox.uni-giessen.de/dl/fiAWtpfgvH8u68rhebiUX4AQ/JHaaS.webm"></video>
+![JHaaS Demo Video](./assets/JHaaS.webm)
 
 ### The technical process
 
@@ -93,7 +93,7 @@ In order to use authentik and the portal in a proper way, you should set the ema
 
 Furthermore it is a good idea to fix the version to be used. Have a look in the `variables.versions.tf` in order to get a list of all versions you can set. Otherwise simply the latest versions will be applied which isn't necessarily a good idea.
 
-You can also control which parts of the configuration should be deployed and which should not. This is particularly helpful if you want to use an external database and external s3 storage, for example.
+You can also control which parts of the configuration should be deployed and which should not. This is particularly helpful if you want to use an external database and external s3 storage, for example. Of course, components such as the Ingress Controller or the Cert Manager only need to be deployed if they are not already present in the cluster.
 
 A sample configuration could lool like this:
 
@@ -129,9 +129,7 @@ configure_authentik             = true
 deploy_jhaas                    = true
 ```
 
-> ⚠️ **Important:**
-> 
-> If you do not know the IP address of your load balancer in advanced, follow these steps.
+#### Deploy without knowing the IP Address in advance
 
 In many cases, the specific IP address of an load balancer only becomes known when the load balancer is created. This is usually the case when e.g. an ingress is created. In this case, a DNS entry only be registered once the ingress of the deployment has been created.
 
@@ -157,6 +155,52 @@ You may then set up your FQDNs to match this IP Address. Make sure the DNS has s
 
 You might then also set `deploy_authentik`, `configure_authentik` and `deploy_jhaas` to true and reapply the configuration.
 
+#### Deploy JHaaS Portal into another K8s cluster than the JupyterHubs
+
+There might be good reasons to separate the JHaaS portal from the cluster where the JupyterHubs should be deployed. This makes it possible, for example, to operate the portal in a private cloud in an internal network while the JupyterHub cluster is located in a public cloud. This means that internal company services such as central databases or mail servers can be used, for example, which would not be accessible from outside network.
+
+To implement this setup, clone the deployment repository twice: once for the portal and once for the JupyterHub cluster.
+
+For the portal deployment, you need to deploy all parts of the setup and in addition you need to set the kubeconfig for the JupyterHub Cluster as follows:
+
+```
+# K8s config
+kubeconfig            = "/path/to/kubeconf/for/portal"
+jhaas_kubeconfig_hubs = "/path/to/kubeconf/for/jupyterhubs"
+
+# [...]
+
+# Control which parts of JHaaS config are to be deployed.
+deploy_nginx_ingress_controller = true
+deploy_cert_manager             = true
+deploy_postgres                 = true
+deploy_redis                    = true
+deploy_minio                    = true
+deploy_authentik                = true
+configure_authentik             = true
+deploy_jhaas                    = true
+```
+
+For the cluster on which the JupyterHubs are to be deployed, you only need an ingress controller and the certmanager:
+
+```
+# K8s config
+kubeconfig      = "/path/to/kubeconf/for/jupyterhubs"
+
+# [...]
+
+deploy_nginx_ingress_controller = true
+deploy_cert_manager             = true
+deploy_postgres                 = false
+deploy_redis                    = false
+deploy_minio                    = false
+deploy_authentik                = false
+configure_authentik             = false
+deploy_jhaas                    = false
+```
+
+Once again, the components only need to be installed if they do not already exist.
+
 ### Deploy JHaaS
 
 After setting the variables for the configuration properly, initialize the Terraform configuration:
@@ -175,7 +219,6 @@ tofu apply
 > 
 > Depending on your local setup you might run to an issue that helm repos aren't cached locally. Just run `helm repo update` manually and try again.
 
-### Deploy JHaaS Portal into another K8s cluster than the jupyterhubs themselves
 
 ## JHaaS First steps
 
