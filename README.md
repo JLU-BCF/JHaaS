@@ -21,6 +21,10 @@ The illustration shows the general life cycle of a JupyterHub for teaching via t
 5. The JupyterHub can now be used to its full extent for the course. New participants can still apply for the course.
 6. After the end of the course, JHaaS will degrade the JupyterHub.
 
+### See it in action
+
+![JHaaS Demo Video](https://jlubox.uni-giessen.de/dl/fiAWtpfgvH8u68rhebiUX4AQ/JHaaS.webm)
+
 ### The technical process
 
 ![Architectural Overview](./assets/JHaaS_Arch_Overview.svg)
@@ -33,7 +37,7 @@ The Terraform Worker writes the result, including some important information, to
 
 If the deployment was successful, the status of the course changes to `DEPLOYED`, otherwise to `FAILED`. In the latter case, course instructors and administrators are informed of the failure by email and manual intervention is required. If the deployment was successful, the JupyterHub can be used to its full extent.
 
-The dispatcher cronjob regularly checks whether requests in the `DEPLOYED` state are ready to be degraded, i.e. when the course is over. If this is the case, it will deploy another Terraform Worker job to degrade the JupyterHub. The terraform worker job again writes its result back to the status. The degration can be succeeded or failed at this point. The dispatcher cronjob reads this result and updates the course in JHaaS accordingly. If the degratiion was successful, the status of the course changes to `DEGRADED`, otherwise to `FAILED`. In the latter case, course instructors and administrators are informed of the failure by email and manual intervention is required. If the degration was successful, the life cycle of the JupyterHub is completed.
+The dispatcher cronjob regularly checks whether requests in the `DEPLOYED` state are ready to be degraded, i.e. when the course is over. If this is the case, it will deploy another Terraform Worker job to degrade the JupyterHub. The terraform worker job again writes its result back to the status. The degration can be succeeded or failed at this point. The dispatcher cronjob reads this result and updates the course in JHaaS accordingly. If the degration was successful, the status of the course changes to `DEGRADED`, otherwise to `FAILED`. In the latter case, course instructors and administrators are informed of the failure by email and manual intervention is required. If the degration was successful, the life cycle of the JupyterHub is completed.
 
 ### More Resources
 
@@ -44,13 +48,15 @@ We created a Poster as well as an extended abstract as part of the CoRDI2023:
 
 ## Get up and Running JHaaS
 
-You should be familiar with Kubernetes, Helm and OpenTofu / Terraform to run JHaaS.
+JHaaS consists of many components that interact with each other. In order to make deployment as simple as possible, we have put together a Terraform configuration that makes deploying JHaaS easier.
 
-JHaaS consists of many components that interact with each other. In order to make deployment as simple as possible, we have put together an OpenTofu / Terraform configuration that makes deploying JHaaS easier.
+In the following instructions, OpenTofu is used instead of Terraform. However, the installation can also be used with Terraform, just replace the command `tofu` with `terraform`.
 
 ### Requirements
 
-To set up a minimal JHaaS setup, you need at least:
+You should be familiar with Kubernetes, Helm and OpenTofu / Terraform to run JHaaS.
+
+To install a minimal JHaaS setup, you need at least:
 
 - A kubernetes Cluster for the JHaaS Portal and the JupyterHubs (may or may not be the same)
 - A FQDN and a wildcard entry on subdomains under your FQDN
@@ -59,79 +65,60 @@ To set up a minimal JHaaS setup, you need at least:
 
 In Order to run JHaaS in production, you should have at least following components as external and backed up services instead of using the bundled versions:
 
-- A Database (Preferable postgres)
+- A postgres database (might also work with mysql / mariadb, but has not been tested)
 - A s3 compatible object storage
 
 ### Get the configuration
 
-The Terraform / OpenTofu configuration can be downloaded from our [public mirror of the deployment repository](https://github.com/JLU-BCF/JHaaS-Deployment). It contains submodules, so make sure to include them:
+The Terraform configuration can be downloaded from our [public mirror of the deployment repository](https://github.com/JLU-BCF/JHaaS-Deployment). It contains submodules, so make sure to include them by either cloning with the `--recurse-submodules` option:
 
 ```
 git clone --recurse-submodules https://github.com/JLU-BCF/JHaaS-Deployment.git
 ```
 
-### Set up your environment (1/2)
-
-Then setup your `terraform.tfvars` file.
-You find all mandatory options in the mandatory tf file.
-
-In order to use authentik and the portal in a proper way, you should also set the email preferences. And you might want to customize the bootstrap email for authentik.
-
-It might be a good idea to fix the version to be used. Have a look in the variables.versions.tf in order to get a list of versions you can set. Otherwise the latest versions will be applied.
-
-> ⚠️ **Important:**
-> If you do not know the IP address of you ingress in advanced, follow these steps
-
-You might not want to deploy all the components at once. Especially if you don't know the IP of your ingress yet. Therefore, you might switch components on and off like this:
+or add them in advance by initalising and updating the submodules manually:
 
 ```
-# Deployment configuration
-deploy_nginx_ingress_controller = true
-deploy_cert_manager             = true
-deploy_postgres                 = true
-deploy_redis                    = true
-deploy_minio                    = true
-deploy_authentik                = false
-configure_authentik             = false
-deploy_jhaas                    = false
+git submodule init
+git submodule update
 ```
 
-In order to deploy and configure authentik and to deploy jhaas you will need to have your FQDNs setup properly. Otherwise the cert manager cannot obtain a valid ssl certificate for authentik and jhaas and thus terraform cannot configure it properly.
+### Set up your environment
 
-### Deploy JHaaS (1/2)
+After cloning the configuration, you have to setup the variables for your deployment. To do this, create the `terraform.tfvars` file and populate it according to your facts.
 
-Initialize the OpenTufo / Terraform configuration:
+You can find all mandatory keys in the `variables.mandatory.tf` file, all optional keys in the `variables.optional.tf` file and all version keys in the `variables.versions.tf` file.
 
-```
-tofu init
-```
+In order to use authentik and the portal in a proper way, you should set the email preferences even if they are technically not mandatory. Also you might want to customize the bootstrap email for authentik.
 
-then
+Furthermore it is a good idea to fix the version to be used. Have a look in the `variables.versions.tf` in order to get a list of all versions you can set. Otherwise simply the latest versions will be applied which isn't necessarily a good idea.
 
-```
-tofu apply
-```
+You can also control which parts of the configuration should be deployed and which should not. This is particularly helpful if you want to use an external database and external s3 storage, for example.
 
-Depending on your Version you might run to an issue that helm repos aren't cached locally. Just run a helm repo update manually and try again.
+A sample configuration could lool like this:
 
 ```
-helm repo update
-```
+# K8s config
+kubeconfig = "/path/to/kubeconf"
 
-### Set up your environment (2/2)
+# Domain config
+authentik_fqdn        = "auth.local"
+portal_fqdn           = "jhaas.local"
+jupyterhubs_base_fqdn = "jhaas.local"
+cm_issuer_email       = "demo@jhaas.local"
 
-When deployment succeeded, get the IP address of your Load Balancer.
+# Mail config
+mail_host      = "mailhog.local"
+mail_port      = "25"
+mail_ssl       = false
+mail_tls       = false
+mail_from      = "jhaas@jhaas.local"
+mail_from_name = "JHaaS Local"
 
-You can see it as external endpoint in the loadbalancer service created for the new nginx ingress.
+# Set you bootstrap email address
+authentik_bootstrap_mail = "admin@jhaas.local"
 
-Set up your FQDNs to match this IP Address.
-
-Make sure the DNS has synced the records before continueing.
-
-You might now set `deploy_authentik`, `configure_authentik` and `deploy_jhaas` to true.
-
-```
-# Deployment configuration
+# Control which parts of JHaaS config are to be deployed.
 deploy_nginx_ingress_controller = true
 deploy_cert_manager             = true
 deploy_postgres                 = true
@@ -142,13 +129,51 @@ configure_authentik             = true
 deploy_jhaas                    = true
 ```
 
-### Deploy JHaaS (2/2)
+> ⚠️ **Important:**
+> 
+> If you do not know the IP address of your load balancer in advanced, follow these steps.
 
-Once again run
+In many cases, the specific IP address of an load balancer only becomes known when the load balancer is created. This is usually the case when e.g. an ingress is created. In this case, a DNS entry only be registered once the ingress of the deployment has been created.
+
+The deployment and configuration of Authentik as well as the deployment of the JHaaS portal can only be successful if a corresponding DNS entry exists, as this is the only way to create a valid SSL certificate. (Technically, a valid certificate can of course already exist beforehand, but this case is not yet covered in the deployment).
+
+The solution to this problem is to first install only the dependencies (including the ingress) by setting the deployment configuration e.g. as follows:
+
+```
+# Control which parts of JHaaS config are to be deployed.
+deploy_nginx_ingress_controller = true
+deploy_cert_manager             = true
+deploy_postgres                 = true
+deploy_redis                    = true
+deploy_minio                    = true
+deploy_authentik                = false
+configure_authentik             = false
+deploy_jhaas                    = false
+```
+
+After the dependencies have been deployed, get the IP of the load balancer. You can see it as external endpoint in the loadbalancer service created for the new nginx ingress.
+
+You may then set up your FQDNs to match this IP Address. Make sure the DNS has synced the records before continueing.
+
+You might then also set `deploy_authentik`, `configure_authentik` and `deploy_jhaas` to true and reapply the configuration.
+
+### Deploy JHaaS
+
+After setting the variables for the configuration properly, initialize the Terraform configuration:
+
+```
+tofu init
+```
+
+and then apply the configuration with:
 
 ```
 tofu apply
 ```
+
+> ❕ Notice
+> 
+> Depending on your local setup you might run to an issue that helm repos aren't cached locally. Just run `helm repo update` manually and try again.
 
 ### Deploy JHaaS Portal into another K8s cluster than the jupyterhubs themselves
 
@@ -171,12 +196,38 @@ The JHaaS system is now ready to be used.
 ## In-Depth: Components of JHaaS
 
 ### Portal Backend
+
+👉 [Repository](https://github.com/JLU-BCF/JHaaS-Portal-Backend)
+
+
 ### Portal Frontend
+
+👉 [Repository](https://github.com/JLU-BCF/JHaaS-Portal-Frontend)
+
+
 ### TF Worker
+
+👉 [Repository](https://github.com/JLU-BCF/JHaaS-TF-Worker)
+
 
 ## In-Depth: Configuration of JHaaS
 
 ### TF Config
+
+👉 [Repository](https://github.com/JLU-BCF/JHaaS-TF-Config)
+
+
 ### Authentik Config
+
+👉 [Repository](https://github.com/JLU-BCF/JHaaS-Authentik-Config)
+
+
 ### Portal Helm Chart
+
+👉 [Repository](https://github.com/JLU-BCF/JHaaS-Portal-Helm-Chart)
+
+
 ### Deployment Config
+
+👉 [Repository](https://github.com/JLU-BCF/JHaaS-Deployment)
+
