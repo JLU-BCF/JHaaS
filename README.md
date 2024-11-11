@@ -23,7 +23,8 @@ The illustration shows the general life cycle of a JupyterHub for teaching via t
 
 ### See it in action
 
-![JHaaS Demo Video](./assets/JHaaS.webm)
+[![Watch the JHaaS Demo Video](./assets/JHaaS_Demo.png)](https://jlubox.uni-giessen.de/getlink/fiAWtpfgvH8u68rhebiUX4AQ/JHaaS.webm)
+
 
 ### The technical process
 
